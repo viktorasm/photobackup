@@ -31,34 +31,43 @@ func NewS3Destination(ctx context.Context, bucketName string) (Destination, erro
 	}, nil
 }
 
-func (u *s3destination) Exists(ctx context.Context, objectName string) (bool, error) {
-	_, err := u.client.HeadObject(ctx, &s3.HeadObjectInput{
+func (u *s3destination) Exists(ctx context.Context, path string, hash string) (bool, error) {
+	resp, err := u.client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: &u.bucketName,
-		Key:    &objectName,
+		Key:    &path,
 	})
-	if err == nil {
-		return true, nil
-	}
-	var nf *types.NotFound
-	if !errors.As(err, &nf) {
+	if err != nil {
+		var nf *types.NotFound
+		if errors.As(err, &nf) {
+			return false, nil
+		}
 		return false, fmt.Errorf("getting object attributes: %w", err)
 	}
-	return false, nil
+
+	metadataHash, hashExists := resp.Metadata["hash"]
+	if !hashExists || metadataHash != hash {
+		println("hash mismatch", hash, metadataHash)
+		return false, nil
+	}
+	return true, nil
 }
 
-func (u *s3destination) Write(ctx context.Context, objectKey string, contents io.Reader) error {
+func (u *s3destination) Write(ctx context.Context, name string, hash string, source io.Reader) error {
 	var partMiBs int64 = 10
 	uploader := manager.NewUploader(u.client, func(u *manager.Uploader) {
 		u.PartSize = partMiBs * 1024 * 1024
 	})
 	_, err := uploader.Upload(ctx, &s3.PutObjectInput{
 		Bucket:       aws.String(u.bucketName),
-		Key:          aws.String(objectKey),
-		Body:         contents,
+		Key:          aws.String(name),
+		Body:         source,
 		StorageClass: types.StorageClassDeepArchive,
+		Metadata: map[string]string{
+			"hash": hash,
+		},
 	})
 	if err != nil {
-		return fmt.Errorf("couldn't upload large object to %v:%v: %w", u.bucketName, objectKey, err)
+		return fmt.Errorf("couldn't upload large object to %v:%v: %w", u.bucketName, name, err)
 	}
 
 	return err

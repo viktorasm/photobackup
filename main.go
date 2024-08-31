@@ -23,13 +23,12 @@ func Main() error {
 	})).With("source_dir", cfg.SourceDir, "bucket", cfg.DestinationBucket)
 	logger.Info("starting")
 
-	//s3destination, err := export.NewS3Destination(ctx, cfg.DestinationBucket)
-	//if err != nil {
-	//	return err
-	//}
-
-	// exporter := export.NewExporter(s3destination)
-	exporter := export.NewExporter(export.NewNoopDestination())
+	s3destination, err := export.NewS3Destination(ctx, cfg.DestinationBucket)
+	if err != nil {
+		return err
+	}
+	exporter := export.NewExporter(s3destination)
+	// exporter := export.NewExporter(export.NewNoopDestination())
 
 	return walker.EnumerateTopLevelFolders(cfg.SourceDir, cfg.Includes, func(folder string) error {
 		logger := logger.With("folder", folder)

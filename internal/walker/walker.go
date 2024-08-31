@@ -1,6 +1,8 @@
 package walker
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"os"
@@ -13,11 +15,19 @@ import (
 type ExportObject struct {
 	Name  string
 	Files []ExportFile
+	Hash  string
 }
+
 type ExportFile struct {
 	Path    string
 	RelPath string
 	Size    int64
+}
+
+func (o *ExportObject) sort() {
+	slices.SortFunc(o.Files, func(a, b ExportFile) int {
+		return strings.Compare(a.RelPath, b.RelPath)
+	})
 }
 
 func SelectFiles(dir string, excludes []string) (*ExportObject, error) {
@@ -64,11 +74,20 @@ func SelectFiles(dir string, excludes []string) (*ExportObject, error) {
 		return nil, fmt.Errorf("walking folder: %w", err)
 	}
 
-	slices.SortFunc(result.Files, func(a, b ExportFile) int {
-		return strings.Compare(a.RelPath, b.RelPath)
-	})
+	result.sort()
+
+	result.Hash = filesHash(result.Files)
 
 	return &result, nil
+}
+
+func filesHash(files []ExportFile) string {
+	h := sha256.New()
+	for _, file := range files {
+		h.Write([]byte(fmt.Sprintf("%s:%d", file.RelPath, file.Size)))
+	}
+
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func matchesPatterns(path string, patterns []string) (bool, error) {

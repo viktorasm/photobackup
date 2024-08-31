@@ -39,7 +39,6 @@ func Pipe(ctx context.Context, logger *slog.Logger, progress *walker.Progress, f
 			progress.Finished(sourceFile)
 		}
 		progress.Done()
-		logger.Info("finished zipping")
 		if err := zipWriter.Close(); err != nil {
 			return fmt.Errorf("closing zip file: %w", err)
 		}

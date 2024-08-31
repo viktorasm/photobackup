@@ -10,18 +10,18 @@ import (
 )
 
 type Destination interface {
-	Exists(ctx context.Context, path string) (bool, error)
-	Write(ctx context.Context, name string, source io.Reader) error
+	Exists(ctx context.Context, path string, hash string) (bool, error)
+	Write(ctx context.Context, name string, hash string, source io.Reader) error
 }
 
 type noopDestination struct {
 }
 
-func (n noopDestination) Exists(ctx context.Context, path string) (bool, error) {
+func (n noopDestination) Exists(ctx context.Context, path string, hash string) (bool, error) {
 	return false, nil
 }
 
-func (n noopDestination) Write(ctx context.Context, name string, source io.Reader) error {
+func (n noopDestination) Write(ctx context.Context, name string, hash string, source io.Reader) error {
 	_, err := io.Copy(io.Discard, source)
 	return err
 }
@@ -41,18 +41,19 @@ func NewExporter(b Destination) *Exporter {
 func (e *Exporter) Upload(ctx context.Context, logger *slog.Logger, export *walker.ExportObject) error {
 	objectName := fmt.Sprintf("%s.zip", export.Name)
 
-	exists, err := e.b.Exists(ctx, objectName)
+	exists, err := e.b.Exists(ctx, objectName, export.Hash)
 	if err != nil {
 		return err
 	}
 	if exists {
+		logger.Info("already exists")
 		return nil
 	}
 
 	progress := walker.NewProgress(objectName, export.Files)
 
 	return compresion.Pipe(ctx, logger, progress, export.Files, func(source io.Reader) error {
-		err := e.b.Write(ctx, objectName, source)
+		err := e.b.Write(ctx, objectName, export.Hash, source)
 		if err != nil {
 			return fmt.Errorf("write failed: %w", err)
 		}

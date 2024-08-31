@@ -29,13 +29,13 @@ func Main() error {
 	//}
 
 	// exporter := export.NewExporter(s3destination)
-	exporter := export.NewExporter(export.NewNoopDestination(logger))
+	exporter := export.NewExporter(export.NewNoopDestination())
 
-	return walker.EnumerateTopLevelFolders(cfg.SourceDir, func(folder string) error {
+	return walker.EnumerateTopLevelFolders(cfg.SourceDir, cfg.Includes, func(folder string) error {
 		logger := logger.With("folder", folder)
 		logger.Info("starting folder upload")
 
-		export, err := walker.SelectFiles(folder)
+		export, err := walker.SelectFiles(folder, cfg.Excludes)
 		if err != nil {
 			return fmt.Errorf("preparing export: %w", err)
 		}

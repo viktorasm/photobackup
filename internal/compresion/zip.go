@@ -46,7 +46,6 @@ func Pipe(ctx context.Context, logger *slog.Logger, progress *walker.Progress, f
 		if err := pipeWriter.Close(); err != nil {
 			return err
 		}
-		logger.Info("writer closed")
 
 		return nil
 	})

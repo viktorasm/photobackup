@@ -15,7 +15,6 @@ type Destination interface {
 }
 
 type noopDestination struct {
-	log *slog.Logger
 }
 
 func (n noopDestination) Exists(ctx context.Context, path string) (bool, error) {
@@ -24,14 +23,11 @@ func (n noopDestination) Exists(ctx context.Context, path string) (bool, error) 
 
 func (n noopDestination) Write(ctx context.Context, name string, source io.Reader) error {
 	_, err := io.Copy(io.Discard, source)
-	n.log.Info("noop backend write finished", "name", name, "err", err)
 	return err
 }
 
-func NewNoopDestination(log *slog.Logger) Destination {
-	return &noopDestination{
-		log: log,
-	}
+func NewNoopDestination() Destination {
+	return &noopDestination{}
 }
 
 type Exporter struct {

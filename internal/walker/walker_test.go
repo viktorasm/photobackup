@@ -12,9 +12,15 @@ import (
 func TestSelectFiles(t *testing.T) {
 	r := require.New(t)
 
-	exportDir, files := createFileStructure(t, "export 2024 25", "2/a.txt", "2/b.txt", "1/c.txt")
+	exportDir, files := createFileStructure(t, "export 2024 25",
+		"2/a.txt",
+		"2/b.txt",
+		"1/c.txt",
+		"1/c.xmp",
+		"4/darktable_exported/whatever.jpeg", // should be ignored
+	)
 
-	result, err := SelectFiles(exportDir)
+	result, err := SelectFiles(exportDir, []string{"*.xmp", "*/darktable_exported/*"})
 	r.NoError(err)
 	r.NotNil(result)
 	r.Equal("export-2024-25", result.Name, "replace all spaces with dashes")

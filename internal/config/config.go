@@ -12,6 +12,7 @@ type AppConfig struct {
 	DestinationBucket string   `yaml:"destinationBucket"`
 	Includes          []string `yaml:"includes"`
 	SourceDir         string   `yaml:"sourceDir"`
+	Excludes          []string `yaml:"excludes"`
 }
 
 func Load() (*AppConfig, error) {

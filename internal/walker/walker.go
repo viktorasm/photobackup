@@ -20,7 +20,7 @@ type ExportFile struct {
 	Size    int64
 }
 
-func SelectFiles(dir string) (*ExportObject, error) {
+func SelectFiles(dir string, excludes []string) (*ExportObject, error) {
 	result := ExportObject{
 		Name: regexp.MustCompile(`\s+`).ReplaceAllString(filepath.Base(dir), "-"),
 	}
@@ -30,11 +30,11 @@ func SelectFiles(dir string) (*ExportObject, error) {
 			return err
 		}
 
-		// TODO: convert to excludes
-		if strings.Contains(filePath, "darktable_exported") {
-			return nil
+		excluded, err := matchesPatterns(filePath, excludes)
+		if err != nil {
+			return err
 		}
-		if strings.HasSuffix(filePath, ".xmp") {
+		if excluded {
 			return nil
 		}
 
@@ -71,7 +71,23 @@ func SelectFiles(dir string) (*ExportObject, error) {
 	return &result, nil
 }
 
-func EnumerateTopLevelFolders(baseFolder string, handler func(string) error) error {
+func matchesPatterns(path string, patterns []string) (bool, error) {
+	path = filepath.ToSlash(path)
+
+	for _, pattern := range patterns {
+		match, err := filepath.Match(pattern, path)
+		if err != nil {
+			return false, fmt.Errorf("matching ignored files: %w", err)
+		}
+		if match {
+			return true, nil
+		}
+	}
+	return false, nil
+
+}
+
+func EnumerateTopLevelFolders(baseFolder string, includes []string, handler func(string) error) error {
 	entries, err := os.ReadDir(baseFolder)
 	if err != nil {
 		return err
@@ -81,13 +97,13 @@ func EnumerateTopLevelFolders(baseFolder string, handler func(string) error) err
 			continue
 		}
 
-		// TODO: convert to includes
-		if !strings.Contains(info.Name(), "sicily") {
+		matches, err := matchesPatterns(info.Name(), includes)
+		if err != nil {
+			return err
+		}
+		if !matches {
 			continue
 		}
-		//if !strings.HasSuffix(info.Name(), "09 20") {
-		//	return nil
-		//}
 
 		if err := handler(filepath.Join(baseFolder, info.Name())); err != nil {
 			return err

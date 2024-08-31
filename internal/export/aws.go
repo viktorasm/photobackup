@@ -47,7 +47,7 @@ func (u *s3destination) Exists(ctx context.Context, path string, hash string) (b
 	metadataHash, hashExists := resp.Metadata["hash"]
 	if !hashExists || metadataHash != hash {
 		println("hash mismatch", hash, metadataHash)
-		return false, nil
+		return true, nil // we probably don't want to rewrite with smaller file
 	}
 	return true, nil
 }

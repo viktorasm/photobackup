@@ -1,0 +1,27 @@
+version: '3'
+
+
+vars:
+  GREETING: Hello from Taskfile!
+  LINTER: "github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.3"
+
+tasks:
+  lint:
+    cmds:
+    - go run {{.LINTER}}  run ./...
+    silent: true
+    env:
+      CGO_ENABLED: 0
+    desc: Lint
+  tidy:
+    desc: Tidy
+    cmds:
+      - go mod tidy
+    silent: true
+  fix:
+    desc: Fix
+    cmds:
+      - go run {{.LINTER}} run --fix ./...
+    silent: false
+    env:
+      CGO_ENABLED: 0

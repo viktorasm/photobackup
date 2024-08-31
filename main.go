@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"s3backup/internal/config"
 	"s3backup/internal/export"
 	"s3backup/internal/walker"
@@ -17,7 +18,9 @@ func Main() error {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
-	logger := slog.With("source_dir", cfg.SourceDir, "bucket", cfg.DestinationBucket)
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})).With("source_dir", cfg.SourceDir, "bucket", cfg.DestinationBucket)
 	logger.Info("starting")
 
 	//s3destination, err := export.NewS3Destination(ctx, cfg.DestinationBucket)
@@ -26,7 +29,7 @@ func Main() error {
 	//}
 
 	// exporter := export.NewExporter(s3destination)
-	exporter := export.NewExporter(export.NewNoopBackend())
+	exporter := export.NewExporter(export.NewNoopDestination(logger))
 
 	return walker.EnumerateTopLevelFolders(cfg.SourceDir, func(folder string) error {
 		logger := logger.With("folder", folder)

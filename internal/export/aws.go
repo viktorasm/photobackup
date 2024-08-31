@@ -17,9 +17,9 @@ type s3destination struct {
 	bucketName string
 }
 
-var _ Backend = (*s3destination)(nil)
+var _ Destination = (*s3destination)(nil)
 
-func NewS3Destination(ctx context.Context, bucketName string) (Backend, error) {
+func NewS3Destination(ctx context.Context, bucketName string) (Destination, error) {
 	awsConfig, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("creating s3 client: %w", err)

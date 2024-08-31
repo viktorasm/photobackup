@@ -9,36 +9,36 @@ import (
 	"s3backup/internal/walker"
 )
 
-type Backend interface {
+type Destination interface {
 	Exists(ctx context.Context, path string) (bool, error)
 	Write(ctx context.Context, name string, source io.Reader) error
 }
 
-type noopBackend struct {
+type noopDestination struct {
+	log *slog.Logger
 }
 
-func (n noopBackend) Exists(ctx context.Context, path string) (bool, error) {
+func (n noopDestination) Exists(ctx context.Context, path string) (bool, error) {
 	return false, nil
 }
 
-func (n noopBackend) Write(ctx context.Context, name string, source io.Reader) error {
-	slog.Info("noop backend write started", "name", name)
+func (n noopDestination) Write(ctx context.Context, name string, source io.Reader) error {
 	_, err := io.Copy(io.Discard, source)
-	slog.Info("noop backend write finished", "name", name, "err", err)
+	n.log.Info("noop backend write finished", "name", name, "err", err)
 	return err
 }
 
-func NewNoopBackend() Backend {
-	return &noopBackend{}
+func NewNoopDestination(log *slog.Logger) Destination {
+	return &noopDestination{
+		log: log,
+	}
 }
-
-var _ Backend = (*noopBackend)(nil)
 
 type Exporter struct {
-	b Backend
+	b Destination
 }
 
-func NewExporter(b Backend) *Exporter {
+func NewExporter(b Destination) *Exporter {
 	return &Exporter{b}
 }
 
@@ -53,12 +53,12 @@ func (e *Exporter) Upload(ctx context.Context, logger *slog.Logger, export *walk
 		return nil
 	}
 
-	return compresion.Pipe(ctx, logger, export.Files, func(source io.Reader) error {
-		logger.Info("uploading", "object", objectName)
+	progress := walker.NewProgress(objectName, export.Files)
 
+	return compresion.Pipe(ctx, logger, progress, export.Files, func(source io.Reader) error {
 		err := e.b.Write(ctx, objectName, source)
 		if err != nil {
-			return fmt.Errorf("put object: %w", err)
+			return fmt.Errorf("write failed: %w", err)
 		}
 		return nil
 	})

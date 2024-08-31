@@ -12,7 +12,7 @@ import (
 )
 
 // Pipe converts all sourceFiles into a zipped stream that should be handled by destination func
-func Pipe(ctx context.Context, logger *slog.Logger, sourceFiles []walker.ExportFile, destination func(contents io.Reader) error) error {
+func Pipe(ctx context.Context, logger *slog.Logger, progress *walker.Progress, files []walker.ExportFile, destination func(contents io.Reader) error) error {
 	pipeReader, pipeWriter := io.Pipe()
 
 	errGroup, ctx := errgroup.WithContext(ctx)
@@ -30,13 +30,15 @@ func Pipe(ctx context.Context, logger *slog.Logger, sourceFiles []walker.ExportF
 	// zip and write
 	errGroup.Go(func() error {
 		zipWriter := zip.NewWriter(pipeWriter)
-
-		for _, sourceFile := range sourceFiles {
+		for _, sourceFile := range files {
+			progress.Starting(sourceFile)
 			err := zipFile(ctx, logger, sourceFile, zipWriter)
 			if err != nil {
 				return fmt.Errorf("compressing folder: %w", err)
 			}
+			progress.Finished(sourceFile)
 		}
+		progress.Done()
 		logger.Info("finished zipping")
 		if err := zipWriter.Close(); err != nil {
 			return fmt.Errorf("closing zip file: %w", err)
@@ -53,8 +55,6 @@ func Pipe(ctx context.Context, logger *slog.Logger, sourceFiles []walker.ExportF
 }
 
 func zipFile(ctx context.Context, logger *slog.Logger, file walker.ExportFile, zipWriter *zip.Writer) error {
-	logger.Info("adding file to archive", "file", file.Path)
-
 	info, err := os.Stat(file.Path)
 	if err != nil {
 		return fmt.Errorf("lstat %s: %w", file.Path, err)
